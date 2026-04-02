@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pontaj Lunar</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --card2: #22263a;
+    --accent: #4f8ef7; --accent2: #38e0b0;
+    --danger: #f7614f; --warning: #f7c94f;
+    --text: #f0f2ff; --muted: #7a8099; --border: #2e3450;
+    --radius: 16px; --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px 48px; }
+  .container { width: 100%; max-width: 480px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .header { text-align: center; padding: 32px 0 28px; }
+  .logo { width: 52px; height: 52px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(79,142,247,0.3); }
+  .logo.admin { background: linear-gradient(135deg, var(--warning), #f5a623); }
+  h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .header p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+  .date-badge { background: var(--card2); border: 1px solid var(--border); border-radius: 50px; padding: 8px 18px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent2); display: inline-block; margin-top: 12px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 12px; box-shadow: var(--shadow); }
+  .card-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px; }
+
+  select, input[type="number"], input[type="text"], input[type="password"] { width: 100%; background: var(--card2); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 13px 16px; appearance: none; -webkit-appearance: none; outline: none; transition: border-color 0.2s; }
+  select:focus, input:focus { border-color: var(--accent); }
+  .select-wrap { position: relative; }
+  .select-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; font-size: 16px; }
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .santiere-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .santier-btn { background: var(--card2); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 12px 10px; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .santier-btn:hover { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+  .santier-btn.sel1 { border-color: var(--accent); background: rgba(79,142,247,0.15); color: var(--accent); font-weight: 600; }
+  .santier-btn.sel2 { border-color: var(--accent2); background: rgba(56,224,176,0.12); color: var(--accent2); font-weight: 600; }
+
+  .ore-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ore-block label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  .sn1 { font-size: 11px; color: var(--accent); font-weight: 600; }
+  .sn2 { font-size: 11px; color: var(--accent2); font-weight: 600; }
+
+  .total-bar { background: linear-gradient(135deg, rgba(79,142,247,0.15), rgba(56,224,176,0.1)); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .total-bar .lbl { font-size: 13px; color: var(--muted); }
+  .total-bar .val { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; color: var(--accent2); }
+  .total-bar .unit { font-size: 13px; color: var(--muted); }
+
+  .btn-primary { width: 100%; background: linear-gradient(135deg, var(--accent), #6fa3fa); border: none; border-radius: var(--radius); color: white; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 700; padding: 17px; cursor: pointer; transition: opacity 0.2s, transform 0.1s; box-shadow: 0 4px 20px rgba(79,142,247,0.35); }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-warning { width: 100%; background: linear-gradient(135deg, var(--warning), #f5a623); border: none; border-radius: var(--radius); color: #1a1200; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; padding: 15px; cursor: pointer; box-shadow: 0 4px 20px rgba(247,201,79,0.25); }
+  .btn-ghost { background: none; border: none; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; padding: 4px 8px; transition: color 0.2s; }
+  .btn-ghost:hover { color: var(--text); }
+
+  .error-msg { background: rgba(247,97,79,0.12); border: 1px solid rgba(247,97,79,0.3); border-radius: 10px; color: var(--danger); font-size: 13px; padding: 10px 14px; margin-bottom: 12px; display: none; }
+  .success-inline { background: rgba(56,224,176,0.12); border: 1px solid rgba(56,224,176,0.3); border-radius: 10px; color: var(--accent2); font-size: 13px; padding: 10px 14px; margin-top: 10px; display: none; text-align: center; }
+
+  .admin-trigger { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+  #successScreen { text-align: center; padding: 48px 24px; }
+  .check { width: 72px; height: 72px; background: linear-gradient(135deg, var(--accent2), #2bc99a); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 20px; box-shadow: 0 4px 24px rgba(56,224,176,0.3); }
+  #successScreen h2 { font-size: 22px; margin-bottom: 8px; }
+  #successScreen p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .btn-reset { margin-top: 24px; background: var(--card2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 12px 24px; cursor: pointer; }
+
+  .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--warning); margin-bottom: 10px; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; min-height: 36px; }
+  .tag { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .tag .del { color: var(--danger); cursor: pointer; font-size: 18px; line-height: 1; background: none; border: none; padding: 0; }
+  .add-row { display: flex; gap: 8px; }
+  .add-row input { flex: 1; padding: 10px 14px; font-size: 14px; }
+  .add-row .btn-add { background: var(--accent); border: none; border-radius: 10px; color: white; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; padding: 10px 18px; cursor: pointer; white-space: nowrap; }
+  .admin-sep { height: 1px; background: var(--border); margin: 20px 0; }
+
+  .loading-overlay { text-align: center; padding: 48px 24px; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- LOADING -->
+  <div id="loadingScreen" class="screen active">
+    <div class="loading-overlay">
+      <div style="margin-top:80px">
+        <div class="spinner"></div>
+        <p style="color:var(--muted)">Se încarcă...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div id="formScreen" class="screen">
+    <div class="header">
+      <div class="logo">🏗️</div>
+      <h1>Pontaj Lunar</h1>
+      <p style="color:var(--muted);font-size:13px;margin-top:4px">ALU GLAS WERK</p>
+      <p>Completează orele lucrate pe șantier</p>
+      <div class="date-badge" id="dateBadge"></div>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="card">
+      <div class="card-label">👤 Nume muncitor</div>
+      <div class="select-wrap"><select id="nume"></select></div>
+    </div>
+    <div class="card">
+      <div class="card-label">📅 Data</div>
+      <input type="date" id="dataZi" id="dataZi" style="width:100%;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:13px 16px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+    </div>
+    <div class="card">
+      <div class="card-label">🏗️ Șantier 1 <span style="color:var(--danger)">*</span></div>
+      <div class="santiere-grid" id="grid1"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">🏗️ Șantier 2 <span style="color:var(--muted)">(opțional)</span></div>
+      <div class="santiere-grid" id="grid2"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">⏱️ Ore lucrate</div>
+      <div class="ore-row">
+        <div class="ore-block">
+          <label>Ore <span class="sn1" id="label1">Șantier 1</span></label>
+          <input type="number" id="ore1" min="0" max="24" placeholder="0" oninput="calcTotal()">
+        </div>
+        <div class="ore-block">
+          <label>Ore <span class="sn2" id="label2">Șantier 2</span></label>
+          <input type="number" id="ore2" min="0" max="24" placeholder="0" oninput="calcTotal()">
+        </div>
+      </div>
+    </div>
+    <div class="total-bar">
+      <div class="lbl">Total ore azi</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <div class="val" id="totalOre">0</div>
+        <div class="unit">ore</div>
+      </div>
+    </div>
+    <button class="btn-primary" id="btnSubmit" onclick="trimite()">Trimite pontajul →</button>
+    <div style="margin-top:10px">
+      <button class="btn-primary" style="background:linear-gradient(135deg,var(--accent2),#2bc99a);box-shadow:0 4px 20px rgba(56,224,176,0.3)" onclick="veziPontaj()">📊 Vezi pontajul tău din luna aceasta</button>
+    </div>
+
+    <div class="admin-trigger">
+      <button class="btn-ghost" onclick="go('adminLogin')">⚙ Admin</button>
+    </div>
+  </div>
+
+  <!-- ADMIN LOGIN -->
+  <div id="adminLogin" class="screen">
+    <div class="header">
+      <div class="logo admin">⚙️</div>
+      <h1>Administrare</h1>
+      <p>Introdu codul de acces</p>
+    </div>
+    <div class="card">
+      <div class="card-label">🔐 Cod secret</div>
+      <input type="password" id="codSecret" placeholder="••••••" onkeydown="if(event.key==='Enter')verifyCode()">
+    </div>
+    <button class="btn-primary" onclick="verifyCode()">Intră în admin →</button>
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn-ghost" onclick="go('formScreen')">← Înapoi</button>
+    </div>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div id="adminPanel" class="screen">
+    <div class="header">
+      <div class="logo admin">⚙️</div>
+      <h1>Administrare</h1>
+      <p>Modifică muncitori și șantiere</p>
+    </div>
+    <div class="card">
+      <div class="section-title">👷 Muncitori</div>
+      <div class="tag-list" id="tagMuncitori"></div>
+      <div class="add-row">
+        <input type="text" id="newMuncitor" placeholder="Nume Prenume" onkeydown="if(event.key==='Enter')addItem('muncitori')">
+        <button class="btn-add" onclick="addItem('muncitori')">+ Adaugă</button>
+      </div>
+      <div class="admin-sep"></div>
+      <div class="section-title">🏗️ Șantiere</div>
+      <div class="tag-list" id="tagSantiere"></div>
+      <div class="add-row">
+        <input type="text" id="newSantier" placeholder="Nume șantier" onkeydown="if(event.key==='Enter')addItem('santiere')">
+        <button class="btn-add" onclick="addItem('santiere')">+ Adaugă</button>
+      </div>
+      <div style="margin-top:20px">
+        <button class="btn-warning" onclick="saveAdmin()">💾 Salvează modificările</button>
+        <div class="success-inline" id="saveOk">✅ Salvat! Toți muncitorii vor vedea lista actualizată.</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:8px">
+      <button class="btn-ghost" onclick="go('formScreen')">← Înapoi la pontaj</button>
+    </div>
+  </div>
+
+  <!-- PONTAJ PERSONAL -->
+  <div id="pontajScreen" class="screen">
+    <div class="header">
+      <div class="logo">📊</div>
+      <h1>Pontajul tău</h1>
+      <p id="pontajSubtitle">Luna curentă</p>
+    </div>
+    <div id="pontajContent">
+      <div class="loading-overlay"><div class="spinner"></div><p style="color:var(--muted)">Se încarcă...</p></div>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn-ghost" onclick="go('formScreen')">← Înapoi</button>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="successScreen" class="screen">
+    <div class="check">✓</div>
+    <h2>Pontaj trimis!</h2>
+    <p id="successMsg"></p>
+    <button class="btn-reset" onclick="resetForm()">Completează altă zi</button>
+  </div>
+
+</div>
+<script>
+  // ============================================================
+  // PUNE URL-UL APPS SCRIPT AICI
+  // ============================================================
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvl0Y_dP06_rU17MMmjKy-xdNQRpq0fhJBwwV9vH-tshr7XQe7bQCmBLHY_DDAYaVSTA/exec";
+  // ============================================================
+  const ADMIN_CODE = "3.1415";
+
+  let muncitori = [], santiere = [], s1="", s2="";
+
+  const azi = new Date();
+  const ZILE = ["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă"];
+  const LUNI = ["Ianuarie","Februarie","Martie","Aprilie","Mai","Iunie","Iulie","August","Septembrie","Octombrie","Noiembrie","Decembrie"];
+
+  document.getElementById("dateBadge").textContent = ZILE[azi.getDay()]+", "+azi.getDate()+" "+LUNI[azi.getMonth()]+" "+azi.getFullYear();
+
+  // Incarca lista din Google Sheets la pornire
+  async function loadConfig() {
+    try {
+      const r = await fetch(SCRIPT_URL);
+      const data = await r.json();
+      muncitori = data.muncitori || [];
+      santiere = data.santiere || [];
+    } catch(e) {
+      muncitori = ["Bargauan Ion","Soare Aurel","Gotcu Tudor","Marin Iulian"];
+      santiere = ["EBI","PWC","ALLOUIS","CSS","BUZZ CITY","LABORATOR","FM GLOBAL","SKY PARK"];
+    }
+    init();
+    go("formScreen");
+  }
+
+  function go(id) {
+    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    if(id==="adminPanel") renderAdminTags();
+  }
+
+  function init() {
+    const sel = document.getElementById("nume");
+    sel.innerHTML = '<option value="">— Alege numele tău —</option>';
+    muncitori.forEach(m => sel.innerHTML += `<option>${m}</option>`);
+    const yyyy = azi.getFullYear();
+    const mm = String(azi.getMonth()+1).padStart(2,'0');
+    const dd = String(azi.getDate()).padStart(2,'0');
+    document.getElementById("dataZi").value = yyyy+"-"+mm+"-"+dd;
+    renderGrids();
+  }
+
+  function renderGrids() {
+    ["grid1","grid2"].forEach((id,idx) => {
+      const nr=idx+1, cl=nr===1?"sel1":"sel2";
+      const g=document.getElementById(id);
+      g.innerHTML="";
+      santiere.forEach(s => {
+        const b=document.createElement("button");
+        b.className="santier-btn"+(((nr===1&&s1===s)||(nr===2&&s2===s))?" "+cl:"");
+        b.textContent=s;
+        b.onclick=()=>pick(nr,s,b);
+        g.appendChild(b);
+      });
+    });
+  }
+
+  function pick(nr,nome,btn) {
+    const cl=nr===1?"sel1":"sel2";
+    if(btn.classList.contains(cl)){
+      btn.classList.remove(cl);
+      if(nr===1){s1="";document.getElementById("label1").textContent="Șantier 1";}
+      else{s2="";document.getElementById("label2").textContent="Șantier 2";}
+      return;
+    }
+    document.getElementById("grid"+nr).querySelectorAll(".santier-btn").forEach(b=>b.classList.remove(cl));
+    btn.classList.add(cl);
+    if(nr===1){s1=nome;document.getElementById("label1").textContent=nome;}
+    else{s2=nome;document.getElementById("label2").textContent=nome;}
+    calcTotal();
+  }
+
+  function calcTotal(){
+    const o1=parseFloat(document.getElementById("ore1").value)||0;
+    const o2=parseFloat(document.getElementById("ore2").value)||0;
+    document.getElementById("totalOre").textContent=o1+o2;
+  }
+
+  function showErr(msg){
+    const e=document.getElementById("errorMsg");
+    e.textContent=msg;e.style.display="block";
+    setTimeout(()=>e.style.display="none",4000);
+  }
+
+  async function trimite(){
+    const nume=document.getElementById("nume").value;
+    const ore1=document.getElementById("ore1").value;
+    const ore2=document.getElementById("ore2").value;
+    if(!nume) return showErr("⚠️ Alege numele tău!");
+    if(!s1) return showErr("⚠️ Alege cel puțin Șantierul 1!");
+    if(!ore1||ore1<=0) return showErr("⚠️ Introdu orele pentru Șantierul 1!");
+    const btn=document.getElementById("btnSubmit");
+    btn.disabled=true;btn.textContent="Se trimite...";
+    const dataInput=document.getElementById("dataZi").value;
+    if(!dataInput) return showErr("⚠️ Alege data!");
+    const dataObj=new Date(dataInput);
+    const dataF=dataObj.toLocaleDateString("ro-RO",{day:"2-digit",month:"2-digit",year:"numeric"});
+    const luna=LUNI[dataObj.getMonth()];
+    const total=(parseFloat(ore1)||0)+(parseFloat(ore2)||0);
+    try{
+      await fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify({tip:"pontaj",timestamp:new Date().toLocaleString("ro-RO"),nume,luna,data:dataF,dataISO:dataInput,santier1:s1,ore1:ore1||"0",santier2:s2||"-",ore2:ore2||"0",total})});
+      go("successScreen");
+      document.getElementById("successMsg").innerHTML=`<strong>${nume}</strong><br>${dataF} • ${luna}<br>${s1}${s2?" + "+s2:""} • <strong>${total} ore</strong>`;
+    }catch(e){
+      btn.disabled=false;btn.textContent="Trimite pontajul →";
+      showErr("❌ Eroare la trimitere. Verifică conexiunea!");
+    }
+  }
+
+  function resetForm(){
+    document.getElementById("ore1").value="";
+    document.getElementById("ore2").value="";
+    document.getElementById("totalOre").textContent="0";
+    s1="";s2="";
+    document.getElementById("label1").textContent="Șantier 1";
+    document.getElementById("label2").textContent="Șantier 2";
+    document.getElementById("btnSubmit").disabled=false;
+    document.getElementById("btnSubmit").textContent="Trimite pontajul →";
+    go("formScreen");
+    renderGrids();
+  }
+
+  function verifyCode(){
+    if(document.getElementById("codSecret").value===ADMIN_CODE){
+      document.getElementById("codSecret").value="";
+      go("adminPanel");
+    }else{
+      const i=document.getElementById("codSecret");
+      i.style.borderColor="var(--danger)";
+      setTimeout(()=>i.style.borderColor="",1000);
+    }
+  }
+
+  function renderAdminTags(){
+    ["tagMuncitori","tagSantiere"].forEach((id,idx)=>{
+      const lista=idx===0?muncitori:santiere;
+      const tip=idx===0?"muncitori":"santiere";
+      document.getElementById(id).innerHTML=lista.map((item,i)=>
+        `<div class="tag">${item}<button class="del" onclick="delItem('${tip}',${i})">×</button></div>`
+      ).join("");
+    });
+  }
+
+  function delItem(tip,i){
+    if(tip==="muncitori") muncitori.splice(i,1);
+    else santiere.splice(i,1);
+    renderAdminTags();
+  }
+
+  function addItem(tip){
+    const id=tip==="muncitori"?"newMuncitor":"newSantier";
+    const val=document.getElementById(id).value.trim();
+    if(!val)return;
+    if(tip==="muncitori") muncitori.push(val);
+    else santiere.push(val);
+    document.getElementById(id).value="";
+    renderAdminTags();
+  }
+
+  async function saveAdmin(){
+    const btn = document.querySelector(".btn-warning");
+    btn.disabled=true;btn.textContent="Se salvează...";
+    try{
+      await fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify({tip:"config",muncitori,santiere})});
+      const el=document.getElementById("saveOk");
+      el.style.display="block";
+      setTimeout(()=>el.style.display="none",4000);
+      init();
+    }catch(e){
+      alert("Eroare la salvare!");
+    }
+    btn.disabled=false;btn.textContent="💾 Salvează modificările";
+  }
+
+  // Seteaza max data = azi (nu se poate selecta viitor)
+  function setMaxDate() {
+    const yyyy = azi.getFullYear();
+    const mm = String(azi.getMonth()+1).padStart(2,'0');
+    const dd = String(azi.getDate()).padStart(2,'0');
+    const input = document.getElementById("dataZi");
+    if(input) input.max = yyyy+"-"+mm+"-"+dd;
+  }
+
+  // Vezi pontajul personal
+  async function veziPontaj() {
+    const nume = document.getElementById("nume").value;
+    if(!nume) return showErr("⚠️ Alege mai întâi numele tău!");
+    
+    go("pontajScreen");
+    const lunaText = LUNI[azi.getMonth()];
+    document.getElementById("pontajSubtitle").textContent = nume + " • " + lunaText + " " + azi.getFullYear();
+    
+    try {
+      const r = await fetch(SCRIPT_URL + "?action=pontaj&nume=" + encodeURIComponent(nume) + "&luna=" + encodeURIComponent(lunaText));
+      const data = await r.json();
+      
+      if(!data.rows || data.rows.length === 0) {
+        document.getElementById("pontajContent").innerHTML = 
+          '<div style="text-align:center;padding:32px;color:var(--muted)">Nu ai completări în ' + lunaText + ' încă.</div>';
+        return;
+      }
+      
+      let totalOre = 0;
+      let rows = data.rows.map(r => {
+        const ore = parseFloat(r.total) || 0;
+        totalOre += ore;
+        return `<tr>
+          <td style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px">${r.data}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px">${r.santier1}${r.santier2 && r.santier2 !== '-' ? '<br><span style="color:var(--accent2);font-size:11px">+'+r.santier2+'</span>' : ''}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;text-align:right;font-family:'DM Mono',monospace;color:var(--accent2)">${ore}h</td>
+        </tr>`;
+      }).join("");
+      
+      document.getElementById("pontajContent").innerHTML = `
+        <div class="card" style="padding:0;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:var(--card2)">
+                <th style="padding:12px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Data</th>
+                <th style="padding:12px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Șantier</th>
+                <th style="padding:12px;text-align:right;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ore</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="total-bar" style="margin-top:8px">
+          <div class="lbl">Total ore ${lunaText}</div>
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <div class="val">${totalOre}</div>
+            <div class="unit">ore</div>
+          </div>
+        </div>`;
+    } catch(e) {
+      document.getElementById("pontajContent").innerHTML = 
+        '<div style="text-align:center;padding:32px;color:var(--danger)">Eroare la încărcare.</div>';
+    }
+  }
+
+  // START - incarca config din Sheets
+  loadConfig();
+  setTimeout(setMaxDate, 500);
+</script>
+</body>
+</html>
