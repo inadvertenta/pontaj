@@ -271,7 +271,7 @@
   // ============================================================
   // PUNE URL-UL APPS SCRIPT AICI
   // ============================================================
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkiUhDISqmJ6s8Y9cejWqQtwAPu67tpSvZ7_lb0_R3qjaHOhytqYsApwwxNL60EOb7qg/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIClzP7VaJewn0nIAbgU-fReGYwDzCcUzcV2g7j_CDKDwK_OhbKNA4dAnDqPME-U5djg/exec";
   const ADMIN_CODE = "3.1415";
 
   let muncitori = [], santiere = [], s1="", s2="";
@@ -469,8 +469,29 @@
     const total=(parseFloat(ore1)||0)+(parseFloat(ore2)||0);
     
     try{
-      const resp = await fetch(SCRIPT_URL, {
+      // Verifica mai intai daca exista pontaj pentru aceasta zi (prin GET)
+      if(!eModificare) {
+        const checkUrl = SCRIPT_URL + "?action=verifica&nume=" + encodeURIComponent(nume) + "&data=" + encodeURIComponent(dataF);
+        const checkResp = await fetch(checkUrl);
+        const checkResult = await checkResp.json();
+        
+        if(checkResult.exista) {
+          btn.disabled=false;btn.textContent="Trimite pontajul →";
+          const vechi = checkResult.vechiDate;
+          document.getElementById("dialogMsg").innerHTML = 
+            `Ai pontat deja în <strong>${dataF}</strong>:<br>` +
+            `${vechi.santier1}: ${vechi.ore1}h` +
+            (vechi.santier2 && vechi.santier2!=='-' ? ` + ${vechi.santier2}: ${vechi.ore2}h` : '') +
+            ` = <strong>${vechi.total}h</strong><br><br>Ai greșit, vrei să modifici?`;
+          document.getElementById("dialogOverlay").style.display="flex";
+          return;
+        }
+      }
+
+      // Trimite pontajul
+      await fetch(SCRIPT_URL, {
         method:"POST",
+        mode:"no-cors",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           tip:"pontaj", eModificare,
@@ -481,26 +502,10 @@
         })
       });
       
-      const result = await resp.json();
-      
-      if(result.status === "conflict") {
-        // Arata dialog modificare
-        btn.disabled=false;btn.textContent="Trimite pontajul →";
-        dataPontajConflict = result.vechiDate;
-        const vechi = result.vechiDate;
-        document.getElementById("dialogMsg").innerHTML = 
-          `Ai pontat deja în <strong>${dataF}</strong>:<br>` +
-          `${vechi.santier1}: ${vechi.ore1}h` +
-          (vechi.santier2 && vechi.santier2!=='-' ? ` + ${vechi.santier2}: ${vechi.ore2}h` : '') +
-          ` = <strong>${vechi.total}h</strong><br><br>Ai greșit, vrei să modifici?`;
-        document.getElementById("dialogOverlay").style.display="flex";
-        return;
-      }
-      
       // Succes
       go("successScreen");
       document.getElementById("successMsg").innerHTML=`<strong>${nume}</strong><br>${dataF} • ${luna}<br>${s1}${s2?" + "+s2:""} • <strong>${total} ore</strong>`;
-      loadOreSantiere(); // Actualizeaza orele pe butoane
+      loadOreSantiere();
       
     }catch(e){
       btn.disabled=false;btn.textContent="Trimite pontajul →";
