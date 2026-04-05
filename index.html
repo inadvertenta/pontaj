@@ -270,8 +270,8 @@
 <script>
   // ============================================================
   // PUNE URL-UL APPS SCRIPT AICI
-  // ==========================YOUR==================================
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkiUhDISqmJ6s8Y9cejWqQtwAPu67tpSvZ7_lb0_R3qjaHOhytqYsApwwxNL60EOb7qg/exec";
+  // ============================================================
+    const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL";
   const ADMIN_CODE = "3.1415";
 
   let muncitori = [], santiere = [], s1="", s2="";
@@ -413,7 +413,8 @@
         const b=document.createElement("button");
         b.className="santier-btn"+(((nr===1&&s1===s)||(nr===2&&s2===s))?" "+cl:"");
         const ore = oreSantiere[s] || 0;
-        b.innerHTML = `<div>${s}</div>${ore>0?`<div style="font-size:10px;color:var(--accent2);margin-top:2px">${ore}h luna aceasta</div>`:""}`;
+        const lunaText = LUNI[azi.getMonth()];
+        b.innerHTML = `<div>${s}</div>${ore>0?`<div style="font-size:10px;color:var(--accent2);margin-top:2px">${Math.round(ore*10)/10}h ${lunaText}</div>`:""}`;
         b.onclick=()=>pick(nr,s,b);
         g.appendChild(b);
       });
