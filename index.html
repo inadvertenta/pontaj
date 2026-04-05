@@ -79,6 +79,30 @@
   .add-row .btn-add { background: var(--accent); border: none; border-radius: 10px; color: white; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; padding: 10px 18px; cursor: pointer; white-space: nowrap; }
   .admin-sep { height: 1px; background: var(--border); margin: 20px 0; }
 
+
+  /* VREME */
+  .weather-bar { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow); overflow-x: auto; }
+  .weather-now { display: flex; align-items: center; gap: 10px; min-width: fit-content; padding-right: 16px; border-right: 1px solid var(--border); }
+  .weather-now .temp { font-family: 'DM Mono', monospace; font-size: 24px; font-weight: 500; color: var(--text); }
+  .weather-now .desc { font-size: 11px; color: var(--muted); }
+  .weather-now .icon { font-size: 28px; }
+  .weather-days { display: flex; gap: 8px; padding-left: 4px; }
+  .weather-day { text-align: center; min-width: 44px; }
+  .weather-day .day-name { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+  .weather-day .day-icon { font-size: 18px; }
+  .weather-day .day-temp { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text); }
+  .weather-day .day-rain { font-size: 10px; color: #4f8ef7; }
+  
+  /* DIALOG CONFIRMARE */
+  .dialog-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .dialog-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 400px; width: 100%; box-shadow: var(--shadow); }
+  .dialog-box h3 { font-size: 18px; margin-bottom: 8px; }
+  .dialog-box p { color: var(--muted); font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+  .dialog-btns { display: flex; gap: 10px; }
+  .dialog-btns button { flex: 1; padding: 13px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
+  .btn-da { background: var(--accent); color: white; }
+  .btn-nu { background: var(--card2); color: var(--muted); border: 1px solid var(--border) !important; }
+
   .loading-overlay { text-align: center; padding: 48px 24px; }
   .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -106,7 +130,25 @@
       <p>Completează orele lucrate pe șantier</p>
       <div class="date-badge" id="dateBadge"></div>
     </div>
+    <!-- VREME -->
+    <div class="weather-bar" id="weatherBar">
+      <div style="color:var(--muted);font-size:13px">⏳ Se încarcă vremea...</div>
+    </div>
+    
     <div class="error-msg" id="errorMsg"></div>
+    
+    <!-- DIALOG PONTAJ DUBLU -->
+    <div class="dialog-overlay" id="dialogOverlay" style="display:none">
+      <div class="dialog-box">
+        <h3>⚠️ Ai pontat deja!</h3>
+        <p id="dialogMsg">Ai pontat deja în ziua aceasta. Ai greșit, vrei să modifici?</p>
+        <div class="dialog-btns">
+          <button class="btn-da" onclick="confirmaModificare()">✏️ Da, modifică</button>
+          <button class="btn-nu" onclick="inchideDialog()">Nu, închide</button>
+        </div>
+      </div>
+    </div>
+    
     <div class="card">
       <div class="card-label">👤 Nume muncitor</div>
       <div class="select-wrap"><select id="nume"></select></div>
@@ -228,12 +270,13 @@
 <script>
   // ============================================================
   // PUNE URL-UL APPS SCRIPT AICI
-  // ============================================================
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvl0Y_dP06_rU17MMmjKy-xdNQRpq0fhJBwwV9vH-tshr7XQe7bQCmBLHY_DDAYaVSTA/exec";
-  // ============================================================
+  // ==========================YOUR==================================
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkiUhDISqmJ6s8Y9cejWqQtwAPu67tpSvZ7_lb0_R3qjaHOhytqYsApwwxNL60EOb7qg/exec";
   const ADMIN_CODE = "3.1415";
 
   let muncitori = [], santiere = [], s1="", s2="";
+  let oreSantiere = {}; // ore per santier luna curenta
+  let dataPontajConflict = null; // pentru modificare
 
   const azi = new Date();
   const ZILE = ["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă"];
@@ -241,7 +284,91 @@
 
   document.getElementById("dateBadge").textContent = ZILE[azi.getDay()]+", "+azi.getDate()+" "+LUNI[azi.getMonth()]+" "+azi.getFullYear();
 
-  // Incarca lista din Google Sheets la pornire
+  // ===== VREME =====
+  async function loadWeather() {
+    try {
+      // Hesperange, Luxembourg: lat=49.5731, lon=6.1731
+      const url = "https://api.open-meteo.com/v1/forecast?latitude=49.5731&longitude=6.1731&current=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FBerlin&forecast_days=7";
+      const r = await fetch(url);
+      const d = await r.json();
+      
+      const wc = d.current.weather_code;
+      const temp = Math.round(d.current.temperature_2m);
+      const ploaie = d.current.precipitation_probability;
+      
+      function wcToIcon(code) {
+        if(code===0) return "☀️";
+        if(code<=2) return "⛅";
+        if(code<=3) return "☁️";
+        if(code<=48) return "🌫️";
+        if(code<=57) return "🌧️";
+        if(code<=67) return "🌨️";
+        if(code<=77) return "❄️";
+        if(code<=82) return "🌧️";
+        if(code<=86) return "🌨️";
+        if(code<=99) return "⛈️";
+        return "🌤️";
+      }
+      
+      function wcToDesc(code) {
+        if(code===0) return "Senin";
+        if(code<=2) return "Parțial noros";
+        if(code<=3) return "Noros";
+        if(code<=48) return "Ceață";
+        if(code<=57) return "Burniță";
+        if(code<=67) return "Ploaie";
+        if(code<=77) return "Ninsoare";
+        if(code<=82) return "Averse";
+        if(code<=99) return "Furtună";
+        return "Variabil";
+      }
+      
+      const icon = wcToIcon(wc);
+      const desc = wcToDesc(wc);
+      
+      // Zilele urmatoare
+      const zileShort = ["Du","Lu","Ma","Mi","Jo","Vi","Sâ"];
+      let daysHtml = "";
+      for(let i=1; i<7; i++) {
+        const date = new Date(d.daily.time[i]);
+        const dayName = zileShort[date.getDay()];
+        const dayIcon = wcToIcon(d.daily.weather_code[i]);
+        const maxT = Math.round(d.daily.temperature_2m_max[i]);
+        const rain = d.daily.precipitation_probability_max[i];
+        daysHtml += `<div class="weather-day">
+          <div class="day-name">${dayName}</div>
+          <div class="day-icon">${dayIcon}</div>
+          <div class="day-temp">${maxT}°</div>
+          <div class="day-rain">${rain}%</div>
+        </div>`;
+      }
+      
+      document.getElementById("weatherBar").innerHTML = `
+        <div class="weather-now">
+          <div class="icon">${icon}</div>
+          <div>
+            <div class="temp">${temp}°C</div>
+            <div class="desc">${desc} • 💧${ploaie}%</div>
+            <div class="desc" style="font-size:10px;margin-top:2px">📍 Hesperange, LU</div>
+          </div>
+        </div>
+        <div class="weather-days">${daysHtml}</div>`;
+    } catch(e) {
+      document.getElementById("weatherBar").innerHTML = '<div style="color:var(--muted);font-size:13px">⚠️ Vremea nu e disponibilă</div>';
+    }
+  }
+
+  // ===== ORE PER SANTIER =====
+  async function loadOreSantiere() {
+    try {
+      const luna = LUNI[azi.getMonth()];
+      const r = await fetch(SCRIPT_URL + "?action=oresantiere&luna=" + encodeURIComponent(luna));
+      const data = await r.json();
+      oreSantiere = data.oreSantiere || {};
+      renderGrids();
+    } catch(e) {}
+  }
+
   async function loadConfig() {
     try {
       const r = await fetch(SCRIPT_URL);
@@ -254,6 +381,8 @@
     }
     init();
     go("formScreen");
+    loadOreSantiere();
+    loadWeather();
   }
 
   function go(id) {
@@ -269,7 +398,9 @@
     const yyyy = azi.getFullYear();
     const mm = String(azi.getMonth()+1).padStart(2,'0');
     const dd = String(azi.getDate()).padStart(2,'0');
-    document.getElementById("dataZi").value = yyyy+"-"+mm+"-"+dd;
+    const inp = document.getElementById("dataZi");
+    inp.value = yyyy+"-"+mm+"-"+dd;
+    inp.max = yyyy+"-"+mm+"-"+dd;
     renderGrids();
   }
 
@@ -281,7 +412,8 @@
       santiere.forEach(s => {
         const b=document.createElement("button");
         b.className="santier-btn"+(((nr===1&&s1===s)||(nr===2&&s2===s))?" "+cl:"");
-        b.textContent=s;
+        const ore = oreSantiere[s] || 0;
+        b.innerHTML = `<div>${s}</div>${ore>0?`<div style="font-size:10px;color:var(--accent2);margin-top:2px">${ore}h luna aceasta</div>`:""}`;
         b.onclick=()=>pick(nr,s,b);
         g.appendChild(b);
       });
@@ -312,32 +444,78 @@
   function showErr(msg){
     const e=document.getElementById("errorMsg");
     e.textContent=msg;e.style.display="block";
-    setTimeout(()=>e.style.display="none",4000);
+    setTimeout(()=>e.style.display="none",5000);
   }
 
-  async function trimite(){
+  // ===== TRIMITE CU VERIFICARE DUBLU PONTAJ =====
+  async function trimite(eModificare=false){
     const nume=document.getElementById("nume").value;
     const ore1=document.getElementById("ore1").value;
     const ore2=document.getElementById("ore2").value;
+    const dataInput=document.getElementById("dataZi").value;
+    
     if(!nume) return showErr("⚠️ Alege numele tău!");
+    if(!dataInput) return showErr("⚠️ Alege data!");
     if(!s1) return showErr("⚠️ Alege cel puțin Șantierul 1!");
     if(!ore1||ore1<=0) return showErr("⚠️ Introdu orele pentru Șantierul 1!");
+    
     const btn=document.getElementById("btnSubmit");
     btn.disabled=true;btn.textContent="Se trimite...";
-    const dataInput=document.getElementById("dataZi").value;
-    if(!dataInput) return showErr("⚠️ Alege data!");
+    
     const dataObj=new Date(dataInput);
     const dataF=dataObj.toLocaleDateString("ro-RO",{day:"2-digit",month:"2-digit",year:"numeric"});
     const luna=LUNI[dataObj.getMonth()];
     const total=(parseFloat(ore1)||0)+(parseFloat(ore2)||0);
+    
     try{
-      await fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify({tip:"pontaj",timestamp:new Date().toLocaleString("ro-RO"),nume,luna,data:dataF,dataISO:dataInput,santier1:s1,ore1:ore1||"0",santier2:s2||"-",ore2:ore2||"0",total})});
+      const resp = await fetch(SCRIPT_URL, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          tip:"pontaj", eModificare,
+          timestamp:new Date().toLocaleString("ro-RO"),
+          nume, luna, data:dataF, dataISO:dataInput,
+          santier1:s1, ore1:ore1||"0",
+          santier2:s2||"-", ore2:ore2||"0", total
+        })
+      });
+      
+      const result = await resp.json();
+      
+      if(result.status === "conflict") {
+        // Arata dialog modificare
+        btn.disabled=false;btn.textContent="Trimite pontajul →";
+        dataPontajConflict = result.vechiDate;
+        const vechi = result.vechiDate;
+        document.getElementById("dialogMsg").innerHTML = 
+          `Ai pontat deja în <strong>${dataF}</strong>:<br>` +
+          `${vechi.santier1}: ${vechi.ore1}h` +
+          (vechi.santier2 && vechi.santier2!=='-' ? ` + ${vechi.santier2}: ${vechi.ore2}h` : '') +
+          ` = <strong>${vechi.total}h</strong><br><br>Ai greșit, vrei să modifici?`;
+        document.getElementById("dialogOverlay").style.display="flex";
+        return;
+      }
+      
+      // Succes
       go("successScreen");
       document.getElementById("successMsg").innerHTML=`<strong>${nume}</strong><br>${dataF} • ${luna}<br>${s1}${s2?" + "+s2:""} • <strong>${total} ore</strong>`;
+      loadOreSantiere(); // Actualizeaza orele pe butoane
+      
     }catch(e){
       btn.disabled=false;btn.textContent="Trimite pontajul →";
       showErr("❌ Eroare la trimitere. Verifică conexiunea!");
     }
+  }
+
+  function confirmaModificare() {
+    document.getElementById("dialogOverlay").style.display="none";
+    trimite(true);
+  }
+
+  function inchideDialog() {
+    document.getElementById("dialogOverlay").style.display="none";
+    document.getElementById("btnSubmit").disabled=false;
+    document.getElementById("btnSubmit").textContent="Trimite pontajul →";
   }
 
   function resetForm(){
@@ -394,7 +572,7 @@
     const btn = document.querySelector(".btn-warning");
     btn.disabled=true;btn.textContent="Se salvează...";
     try{
-      await fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify({tip:"config",muncitori,santiere})});
+      await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tip:"config",muncitori,santiere})});
       const el=document.getElementById("saveOk");
       el.style.display="block";
       setTimeout(()=>el.style.display="none",4000);
@@ -405,34 +583,19 @@
     btn.disabled=false;btn.textContent="💾 Salvează modificările";
   }
 
-  // Seteaza max data = azi (nu se poate selecta viitor)
-  function setMaxDate() {
-    const yyyy = azi.getFullYear();
-    const mm = String(azi.getMonth()+1).padStart(2,'0');
-    const dd = String(azi.getDate()).padStart(2,'0');
-    const input = document.getElementById("dataZi");
-    if(input) input.max = yyyy+"-"+mm+"-"+dd;
-  }
-
-  // Vezi pontajul personal
   async function veziPontaj() {
     const nume = document.getElementById("nume").value;
     if(!nume) return showErr("⚠️ Alege mai întâi numele tău!");
-    
     go("pontajScreen");
     const lunaText = LUNI[azi.getMonth()];
     document.getElementById("pontajSubtitle").textContent = nume + " • " + lunaText + " " + azi.getFullYear();
-    
     try {
       const r = await fetch(SCRIPT_URL + "?action=pontaj&nume=" + encodeURIComponent(nume) + "&luna=" + encodeURIComponent(lunaText));
       const data = await r.json();
-      
       if(!data.rows || data.rows.length === 0) {
-        document.getElementById("pontajContent").innerHTML = 
-          '<div style="text-align:center;padding:32px;color:var(--muted)">Nu ai completări în ' + lunaText + ' încă.</div>';
+        document.getElementById("pontajContent").innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted)">Nu ai completări în ' + lunaText + ' încă.</div>';
         return;
       }
-      
       let totalOre = 0;
       let rows = data.rows.map(r => {
         const ore = parseFloat(r.total) || 0;
@@ -443,36 +606,29 @@
           <td style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;text-align:right;font-family:'DM Mono',monospace;color:var(--accent2)">${ore}h</td>
         </tr>`;
       }).join("");
-      
       document.getElementById("pontajContent").innerHTML = `
         <div class="card" style="padding:0;overflow:hidden">
           <table style="width:100%;border-collapse:collapse">
-            <thead>
-              <tr style="background:var(--card2)">
-                <th style="padding:12px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Data</th>
-                <th style="padding:12px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Șantier</th>
-                <th style="padding:12px;text-align:right;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ore</th>
-              </tr>
-            </thead>
+            <thead><tr style="background:var(--card2)">
+              <th style="padding:12px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Data</th>
+              <th style="padding:12px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Șantier</th>
+              <th style="padding:12px;text-align:right;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ore</th>
+            </tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
         <div class="total-bar" style="margin-top:8px">
           <div class="lbl">Total ore ${lunaText}</div>
           <div style="display:flex;align-items:baseline;gap:6px">
-            <div class="val">${totalOre}</div>
-            <div class="unit">ore</div>
+            <div class="val">${totalOre}</div><div class="unit">ore</div>
           </div>
         </div>`;
     } catch(e) {
-      document.getElementById("pontajContent").innerHTML = 
-        '<div style="text-align:center;padding:32px;color:var(--danger)">Eroare la încărcare.</div>';
+      document.getElementById("pontajContent").innerHTML = '<div style="text-align:center;padding:32px;color:var(--danger)">Eroare la încărcare.</div>';
     }
   }
 
-  // START - incarca config din Sheets
   loadConfig();
-  setTimeout(setMaxDate, 500);
 </script>
 </body>
 </html>
