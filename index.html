@@ -578,7 +578,7 @@
     const btn = document.querySelector(".btn-warning");
     btn.disabled=true;btn.textContent="Se salvează...";
     try{
-      await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tip:"config",muncitori,santiere})});
+      await fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify({tip:"config",muncitori,santiere})});
       const el=document.getElementById("saveOk");
       el.style.display="block";
       setTimeout(()=>el.style.display="none",4000);
